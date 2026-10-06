@@ -4,4 +4,5 @@ __pycache__/
 .venv/
 node_modules/
 dist/
-*.db.claude/settings.local.json
+*.db
+.claude/settings.local.json

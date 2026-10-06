@@ -53,7 +53,7 @@ class Settings(BaseSettings):
     elevenlabs_dialogue_stability: float = 0.5
     openai_price_input_per_1m: float = 0.75
     openai_price_output_per_1m: float = 4.50
-    elevenlabs_price_per_1k_chars: float = 0.10
+    elevenlabs_price_per_1k_chars: float = 0.08  # v3 / Multilingual v2 list price
 
 
 class Segment(BaseModel):

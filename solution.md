@@ -60,14 +60,17 @@ model `gpt-5.4-mini-2026-03-17`, ElevenLabs text-to-dialogue endpoint with the e
 | Cost item | Estimate |
 |---|---:|
 | LLM ($0.75 / 1M in, $4.50 / 1M out) | $0.0075 |
-| TTS ($0.10 / 1k chars) | $0.358 |
-| **Per episode** | **$0.365** |
+| TTS (Eleven v3, $0.08 / 1k chars) | $0.286 |
+| **Per episode** | **$0.294** |
+
+Prices are ElevenLabs' official API rates (the same on every plan, checked 2026-10-06). The run itself
+printed $0.365 because it used an earlier $0.10 estimate taken from third-party pricing pages.
 
 Output: 238 s (4.0 min), 590 words, 15 turns, 4 sources cited.
 
 What the numbers say:
 
-- **TTS is basically the whole bill and most of the wait.** It's about 98% of the cost and 80% of the
+- **TTS is basically the whole bill and most of the wait.** It's about 97% of the cost and 80% of the
   wall-clock time. The LLM step costs under a cent, so a second LLM stage (curate → write) adds almost
   nothing. Character count is the lever that matters, which is why `MAX_TTS_CHARS_PER_EPISODE` exists.
   See unit economics below.
@@ -82,24 +85,29 @@ What the numbers say:
 
 ### Unit economics
 
-Measured rates from the spike: **about 15 TTS characters per second of audio**, so **about $0.09 per
-minute of audio**, almost all of it TTS.
+Measured rates from the spike: **about 15 TTS characters per second of audio**, so **about $0.074 per
+minute of audio** with Eleven v3, almost all of it TTS.
 
-| Scenario | Per episode | Per user per month (daily episode) |
-|---|---:|---:|
-| 10 min, current TTS model | ~$0.92 | **~$28** |
-| 5 min, current TTS model | ~$0.46 | ~$14 |
-| 10 min, Flash/Turbo-class TTS (about half the price per character) | ~$0.47 | ~$14 |
-| 5 min, Flash/Turbo-class TTS | ~$0.24 | ~$7 |
+| Scenario | TTS price per 1k chars | Per episode | Per user per month (daily episode) |
+|---|---:|---:|---:|
+| 10 min, Eleven v3 (current) | $0.08 | ~$0.74 | **~$22** |
+| 5 min, Eleven v3 | $0.08 | ~$0.37 | ~$11 |
+| 10 min, Flash v2.5 or v3 Conversational | $0.04 | ~$0.38 | ~$11 |
+| 10 min, Eleven v4 (temporary promotional price) | $0.022 | ~$0.21 | ~$6 |
+| 5 min, Eleven v4 (temporary promotional price) | $0.022 | ~$0.11 | ~$3 |
+
+Eleven v4's list price is $0.08, the same as v3; the lower price is a limited-time promotion.
 
 - **Cost per *listened* minute is higher than cost per generated minute.** If listeners finish 60% of an
-  episode on average, each listened minute costs about $0.15. That's why completion rate belongs on the
+  episode on average, each listened minute costs about $0.12. That's why completion rate belongs on the
   dashboard next to cost.
 - **Levers, biggest first:**
   1. Episode length (cost scales linearly with characters).
-  2. A cheaper TTS model, if it passes the voice tuning experiment.
+  2. A cheaper TTS model (Flash or v3 Conversational at half the price), if it passes the voice tuning
+     experiment. At list price Eleven v4 costs the same as v3, so choosing it is a quality decision;
+     its promotional price is a bonus, not a plan.
   3. Synthesizing shared story segments once for every listener who follows the same topics. Only
      greetings and transitions are personal.
   4. Caching, so a retry never pays twice for the same audio.
-- **Caveats:** one run (n = 1), list pay-as-you-go prices, and ElevenLabs subscription credits make the
-  effective per-character price lower. Treat these numbers as orders of magnitude.
+- **Caveats:** one run (n = 1), and prices from ElevenLabs' API pricing page on 2026-10-06, which change.
+  Treat these numbers as orders of magnitude.

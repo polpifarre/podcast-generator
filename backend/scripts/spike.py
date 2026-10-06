@@ -19,7 +19,7 @@ import feedparser
 import httpx
 import trafilatura
 from openai import AsyncOpenAI
-from pydantic import BaseModel
+from pydantic import BaseModel, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydub import AudioSegment
 from tenacity import retry, retry_if_exception, stop_after_attempt, wait_exponential
@@ -37,9 +37,9 @@ HOSTS = {"A": "Alex", "B": "Sam"}
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=REPO_ROOT / ".env", extra="ignore")
 
-    openai_api_key: str
+    openai_api_key: SecretStr
     openai_model: str
-    elevenlabs_api_key: str
+    elevenlabs_api_key: SecretStr
     elevenlabs_voice_a: str
     elevenlabs_voice_b: str
     # Unset -> omit model_id and let ElevenLabs use its endpoint default.
@@ -165,7 +165,9 @@ Rules:
 async def write_script(
     settings: Settings, topic: str, articles: list[Article], words: int
 ):
-    client = AsyncOpenAI(api_key=settings.openai_api_key, timeout=180)
+    client = AsyncOpenAI(
+        api_key=settings.openai_api_key.get_secret_value(), timeout=180
+    )
     corpus = "\n\n".join(
         f"[{i}] {a.title}\nOutlet: {a.source}\nURL: {a.url}\n{a.text}"
         for i, a in enumerate(articles, 1)
@@ -281,7 +283,7 @@ def chunk_for_dialogue(segs: list[Segment]) -> list[list[Segment]]:
 async def synthesize(s: Settings, segs: list[Segment]) -> tuple[list[bytes], str, int]:
     """Return (audio clips, path used, tts chars billed). Each clip is one dialogue
     chunk or one segment. A failed segment is skipped, never the whole episode."""
-    headers = {"xi-api-key": s.elevenlabs_api_key}
+    headers = {"xi-api-key": s.elevenlabs_api_key.get_secret_value()}
     chars = 0
     sem = asyncio.Semaphore(3)
 

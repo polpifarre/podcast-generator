@@ -1,14 +1,22 @@
-.PHONY: dev test lint episode reset-db
+.PHONY: dev backend frontend test lint episode reset-db
 
-# Backend at http://localhost:8000 (try it at /docs). Restarts when the code changes.
+# Website at http://localhost:5173, backend at http://localhost:8000 (API page at /docs).
+# Both restart when their code changes; Ctrl+C stops both.
 dev:
+	$(MAKE) -j 2 backend frontend
+
+backend:
 	cd backend && uv run uvicorn app.main:app --reload
+
+frontend:
+	cd frontend && pnpm dev
 
 test:
 	cd backend && uv run pytest
 
 lint:
 	cd backend && uv run ruff check . && uv run ruff format --check .
+	cd frontend && pnpm lint && pnpm exec tsc -b
 
 # One episode with the profile's settings, from the command line.
 episode:

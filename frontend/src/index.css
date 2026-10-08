@@ -1,8 +1,127 @@
-/* Global styles. Kept minimal; Phase 3 adds the real page styles. */
+/* All the styles: one narrow column, the system font, light or dark from the OS. */
+:root {
+  color-scheme: light dark;
+  --accent: #2563eb;
+  --border: #9ca3af80;
+  --muted: #6b7280;
+}
+
 body {
   margin: 0 auto;
-  max-width: 960px;
-  padding: 2rem 1rem;
+  max-width: 720px;
+  padding: 1.5rem 1rem;
   font-family: system-ui, sans-serif;
   line-height: 1.5;
+}
+
+header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+nav,
+.actions,
+form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Canvas and CanvasText are the theme's own background and text colors, so open
+   dropdown menus are readable in both light and dark mode. */
+button,
+input,
+select,
+option {
+  font: inherit;
+  color: CanvasText;
+  background: Canvas;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.35rem 0.8rem;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.active,
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+label,
+.label {
+  display: block;
+  margin: 1.25rem 0 0.5rem;
+  font-weight: 600;
+}
+
+label select,
+label input {
+  display: block;
+  margin-top: 0.25rem;
+  font-weight: normal;
+}
+
+.actions {
+  margin-top: 1.5rem;
+}
+
+/* Interests as removable "chips". */
+.interests {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.interests li {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.1rem 0.2rem 0.1rem 0.8rem;
+}
+
+.interests button {
+  border: none;
+  padding: 0 0.5rem;
+}
+
+.card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.card h3 {
+  margin: 0;
+}
+
+.meta {
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0.25rem 0 0.75rem;
+}
+
+audio {
+  width: 100%;
+}
+
+details {
+  margin-top: 0.5rem;
+}
+
+.error {
+  color: #dc2626;
 }

@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from pydub import AudioSegment
 from sqlalchemy import select
 from tenacity import retry, stop_after_attempt, wait_exponential
+from trafilatura.settings import use_config
 
 from app.config import MEDIA_DIR, REPO_ROOT, settings
 from app.db import Episode, Profile, Session, engine, init_db
@@ -28,6 +29,11 @@ TOTAL_ARTICLES = 6  # shared between the interests
 MAX_CHARS_PER_ARTICLE = 4000  # news puts the key facts first; this caps the LLM cost
 WORDS_PER_MINUTE = 150  # used to turn the episode length into a word target
 CHUNK_MAX_CHARS = 1900  # ElevenLabs takes about 2,000 characters per request
+
+# trafilatura waits up to 30 s for a site and tries 3 times: about 2 minutes for a site
+# that never answers (Episode 1 lost 4 minutes to two of them). With 5 s: about 20 s.
+DOWNLOAD_CONFIG = use_config()
+DOWNLOAD_CONFIG.set("DEFAULT", "DOWNLOAD_TIMEOUT", "5")
 
 
 # The shape the LLM must answer in (structured output): a title, the turns, the sources.
@@ -99,7 +105,9 @@ def get_articles(interests: list[str]) -> list[dict]:
             # Bing's link is a redirect; the publisher's URL is in its `url=` part.
             url = parse_qs(urlparse(e.link).query).get("url", [e.link])[0]
             # fetch_url returns None if the site blocks us, and then extract does too.
-            text = trafilatura.extract(trafilatura.fetch_url(url))
+            text = trafilatura.extract(
+                trafilatura.fetch_url(url, config=DOWNLOAD_CONFIG)
+            )
             found.append(
                 {
                     "title": e.title,

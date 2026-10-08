@@ -1,15 +1,15 @@
 # Personal Podcast Generator — Solution
 
-> Draft. Filled so far: one decision (3), integration quirks (4) and real numbers (6). The other
-> sections are written as the phases are completed.
+> Draft. Filled so far: one decision (3), integration quirks (4), real numbers (6) and scope cuts (7).
+> The other sections are written as the phases are completed.
 
 ## 3. Decisions and trade-offs
 
 ### Schema management: `create_all`, not migrations (yet)
 
 Tables are created on startup with SQLAlchemy's `create_all`, which creates missing tables but never
-alters existing ones. After a schema change, `make reset-db` wipes the local SQLite file and the Postgres
-volume, and the next start recreates everything.
+alters existing ones. After a schema change, `make reset-db` deletes the local SQLite file, and the next
+start recreates everything.
 
 - **Why:** during the build the schema changes in almost every phase, there's no data worth keeping, and
   reviewers always start from an empty database. Writing a migration for every change would add work for
@@ -17,7 +17,7 @@ volume, and the next start recreates everything.
 - **Trade-off:** `create_all` can't evolve a database that holds real data. A production deployment needs
   versioned migrations (Alembic), so schema changes keep existing user data. Moving over is cheap: one
   auto-generated initial migration from the finished models, plus `alembic upgrade head` before the app
-  starts. That's an optional Phase 9 step.
+  starts (see §7).
 
 ## 4. Integration quirks
 
@@ -28,18 +28,18 @@ grows as new integrations are added.
 |---|---|---|---|
 | 1 | **Google News RSS links don't lead to the article.** Item links are opaque IDs (`news.google.com/rss/articles/CBMi…`) and, from the EU, redirect to `consent.google.com`. There's no publisher URL, so no article text | Following a feed link with curl during the spike: `302 → consent.google.com` | Switched per-topic search to **Bing News RSS**, whose links carry the publisher URL in a `url=` parameter, plus the outlet name and a snippet |
 | 2 | **Bing picks the market from the caller's IP.** From Spain it returned `mkt=es-es` and mixed Spanish results into an English topic | Inspecting the first Bing feed | Always send `setmkt=en-US&setlang=en-US` (to become a per-profile language setting) |
-| 3 | **Bing News RSS is unofficial.** Microsoft retired the official Bing Search APIs in August 2025, so this feed can change or be rate-limited without notice | Checking for an official API | Kept behind the `NewsProvider` interface, with outlet RSS and Hacker News as independent sources |
-| 4 | **Search results include sponsored and low-value pages** (a sponsored USA Today story, a White House fact sheet, a law-firm newsletter) | Reading the spike's sources | Ranking by outlet quality and source diversity (Phase 3) |
+| 3 | **Bing News RSS is unofficial.** Microsoft retired the official Bing Search APIs in August 2025, so this feed can change or be rate-limited without notice | Checking for an official API | Kept as the only source, on purpose, for simplicity: if it breaks, the fetch step is the only code to change. More sources are listed in §7 |
+| 4 | **Search results include sponsored and low-value pages** (a sponsored USA Today story, a White House fact sheet, a law-firm newsletter) | Reading the spike's sources | Not handled yet: the LLM picks the most relevant stories from what it's given. Ranking by outlet quality is listed in §7 |
 | 5 | **Paywalls and bot blocking.** NYT and the Baltimore Sun returned HTTP errors to our fetcher | The spike's extract stage | Fetch 2× the articles needed and fall back to the RSS snippet; a blocked article never fails the episode |
-| 6 | **The ElevenLabs key lacks the `voices_read` permission**, so voices and models can't be listed at runtime | Provided key's permissions | Voice and model IDs come only from config; the dialogue endpoint is probed with one real request and falls back to per-segment TTS if it fails |
+| 6 | **The ElevenLabs key lacks the `voices_read` permission**, so voices and models can't be listed at runtime | Provided key's permissions | Voice and model IDs come only from config; the dialogue endpoint is used directly (it works with this key) |
 | 7 | **The text-to-dialogue endpoint takes about 2,000 characters per request**, much less than an episode script | ElevenLabs API docs | Pack consecutive turns into chunks of ≤1,900 characters; prompt keeps turns under 350 characters |
-| 8 | **The dialogue model only takes three stability values** (0.0, 0.5, 1.0) and silently rounds anything else | ElevenLabs model docs | A separate `ELEVENLABS_DIALOGUE_STABILITY` setting, so per-segment stability (e.g. 0.4) isn't silently changed |
+| 8 | **The dialogue model only takes three stability values** (0.0, 0.5, 1.0) and silently rounds anything else | ElevenLabs model docs | `ELEVENLABS_DIALOGUE_STABILITY` is documented as 0.0 / 0.5 / 1.0, so a value like 0.4 isn't silently rounded |
 | 9 | **ffmpeg's `loudnorm` filter changes the sample rate.** The first episode came out at 48 kHz instead of 44.1 kHz | `ffprobe` on the output | Set the output rate explicitly (`-ar 44100`) after the filter |
 | 10 | **`pydub` breaks on Python 3.13+**: it depends on `audioop`, which 3.13 removed. It's also unmaintained since 2021 | Dependency research | Pinned to Python 3.12; fallback plan is calling ffmpeg directly |
 
 ## 5. What makes the episode engaging
 
-_Listening notes from the Phase 1 spike: to be added._
+
 
 ## 6. Real numbers
 
@@ -71,17 +71,15 @@ Output: 238 s (4.0 min), 590 words, 15 turns, 4 sources cited.
 What the numbers say:
 
 - **TTS is basically the whole bill and most of the wait.** It's about 97% of the cost and 80% of the
-  wall-clock time. The LLM step costs under a cent, so a second LLM stage (curate → write) adds almost
-  nothing. Character count is the lever that matters, which is why `MAX_TTS_CHARS_PER_EPISODE` exists.
-  See unit economics below.
+  wall-clock time. The LLM step costs under a cent; character count is the lever that matters. See unit
+  economics below.
 - **Synthesis runs one chunk at a time.** The dialogue chunks are independent, so running them in parallel
-  should cut synthesis time roughly by the number of chunks. The trade-off is less prosodic continuity at
-  chunk boundaries.
-- **Length is off by 31%** (590 words for a 450-word target). One prompt instruction isn't enough length
-  control, which supports the plan's "reject outside ±20% and regenerate" rule.
-- **Source quality needs ranking.** Two of the five articles were a White House fact sheet and a law-firm
-  newsletter. Ranking for outlet quality and source diversity matters more than fetch speed, since fetch is
-  already under 2 s.
+  would cut synthesis time roughly by the number of chunks, at the cost of less prosodic continuity at
+  chunk boundaries. Kept sequential for simplicity (§7).
+- **Length was off by 31%** with the first prompt (590 words for a 450-word target). The conversational
+  prompt landed within 2% in a test (457 / 450), so the app shows the word count instead of regenerating.
+- **Source quality varies.** Two of the five articles were a White House fact sheet and a law-firm
+  newsletter. Ranking by outlet quality would matter more than fetch speed, which is already under 2 s (§7).
 
 ### Unit economics
 
@@ -111,3 +109,19 @@ Eleven v4's list price is $0.08, the same as v3; the lower price is a limited-ti
   4. Caching, so a retry never pays twice for the same audio.
 - **Caveats:** one run (n = 1), and prices from ElevenLabs' API pricing page on 2026-10-06, which change.
   Treat these numbers as orders of magnitude.
+
+## 7. Scope cuts / what I'd do next
+
+The goal was the simplest solution that meets every requirement. These were considered and deliberately
+left out:
+
+| Cut | Why it's fine for now | When I'd add it |
+|---|---|---|
+| Postgres + Docker | SQLite needs no setup; the same SQLAlchemy code runs on Postgres by changing `DATABASE_URL` | Several users or processes writing at once |
+| Database migrations (Alembic) | No data worth keeping; `make reset-db` recreates the tables | Real user data that must survive schema changes |
+| A second LLM stage (curate → write) and an automatic fact check | One call already produces a grounded script that lists its sources | When spot-checks find invented facts |
+| More news sources and ranking | One source covers any topic | Bing's feed changes, or source quality becomes the main complaint |
+| Per-segment TTS fallback, parallel synthesis, audio caching | One code path is easier to reason about; a failed episode is regenerated with one click | ElevenLabs outages or long waits become a real problem |
+| A text normalizer for numbers and acronyms | The prompt asks for numbers spelled the way they're said | Listening finds repeated mispronunciations |
+| Real listening analytics | Mock dashboard data is allowed by the assignment | Real users |
+| Auth and multiple users | Not part of what's evaluated; every table could gain a user id later | A second user |

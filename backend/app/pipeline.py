@@ -48,31 +48,39 @@ class Script(BaseModel):
     sources_used: list[str]
 
 
-PROMPT = """You write scripts for a daily two-host news podcast. The hosts have a real
-conversation; they never take turns reading paragraphs.
-Hosts: Alex (speaker "A", the anchor: states the facts, drives the show, hands off between
-stories) and Sam (speaker "B", the explainer: asks the listener's question, adds context,
-pushes back).
+# Longer episodes cover more stories, so each story doesn't have to stretch.
+STORIES_PER_LENGTH = {5: 3, 10: 4, 15: 5}
+
+# The instructions for the LLM. The conversation rules come from the Episode 0 notes:
+# a warmer intro, one host explains each story, outlets named once, fewer turns.
+PROMPT = """You write scripts for a daily news podcast with two co-hosts, Alex (speaker "A")
+and Sam (speaker "B"). They are equal partners: both explain stories, both ask questions,
+and they talk like two friends who follow the news closely.
 
 Grounding:
-- Use ONLY the articles provided. Attribute facts to the outlet by name ("according to Reuters").
-  Never invent numbers, names, or quotes. If an article is thin, say less about it.
+- Use ONLY the articles provided. Never invent numbers, names, or quotes. If an article is
+  thin, say less about it.
+- Name the outlet once per story, when the story is introduced ("CNBC reports that...").
+  Don't repeat it later in the story.
 - Reactions and opinions never add facts. Frame opinions as questions or perspectives.
 
 Structure:
-- Cold open: hook with the most surprising story and greet the listener by naming today's topic.
-- 3-4 stories. For each: Alex states the facts in one or two short turns; Sam asks the question
-  a listener would ask, or reacts; 3-6 turns of back-and-forth on why it matters; one host says
-  what to watch; then a natural handoff to the next story.
-- Outro: a short sign-off.
+- Intro: a hook from the most surprising story, then a warm welcome and a one- or
+  two-sentence preview of today's stories, so the listener knows what's coming.
+- {stories} stories, covering every topic in the user message. The hosts take turns
+  leading: Alex leads the first story, Sam the second, and so on. For each story:
+  - The lead host explains it in one or two longer turns: what happened and the key facts.
+  - The other host reacts with the question a listener would ask, or a point of their own.
+  - Two to four more exchanges on why it matters; then one host says what to watch next.
+  - A natural handoff to the next story.
+- Outro: a short recap, a sign-off, and "see you tomorrow".
 
 Conversation:
 - Every turn responds to the previous one: answer it, question it, push back, or build on it.
-  Never two independent monologues in a row.
-- Vary turn length: most turns 5-25 words, explanatory turns up to about 50 words, never more
-  than 350 characters. Never make all turns the same length.
-- At least one real question per story, and occasional respectful disagreement.
-- Reactions are short and specific to what was just said, never generic.
+- Explaining turns are longer (35-60 words); reactions and questions are short (5-20 words).
+  Never more than 350 characters in one turn.
+- Both hosts ask questions. Occasional respectful disagreement.
+- Reactions are specific to what was just said, never generic.
 
 Write for the ear: short sentences, contractions. Spell numbers the way they're said. Expand
 acronyms on first use.
@@ -80,7 +88,10 @@ acronyms on first use.
 Never use: "in today's fast-paced world", "let's dive in", "it's worth noting",
 "without further ado", "game-changer", "buckle up", "wow", "that's crazy", "great point".
 
-Target length: about {words} words total.
+Length: about {words} words in total ({minutes} minutes of audio), about {story_words} words
+per story. Scripts often come out too short: use the detail in the articles to reach the
+length.
+
 sources_used: the URLs of the articles you actually used."""
 
 
@@ -137,6 +148,8 @@ def write_script(articles: list[dict], interests: list[str], minutes: int):
         f"[{i}] {a['title']}\nOutlet: {a['outlet']}\nURL: {a['url']}\n{a['text']}"
         for i, a in enumerate(articles, 1)
     )
+    words = minutes * WORDS_PER_MINUTE
+    stories = STORIES_PER_LENGTH[minutes]
     # A long script can take a couple of minutes; the SDK also retries on its own.
     client = OpenAI(api_key=settings.openai_api_key.get_secret_value(), timeout=180)
     response = client.responses.parse(
@@ -144,7 +157,12 @@ def write_script(articles: list[dict], interests: list[str], minutes: int):
         input=[
             {
                 "role": "system",
-                "content": PROMPT.format(words=minutes * WORDS_PER_MINUTE),
+                "content": PROMPT.format(
+                    words=words,
+                    minutes=minutes,
+                    stories=stories,
+                    story_words=(words - 100) // stories,  # ~100 for intro and outro
+                ),
             },
             {
                 "role": "user",

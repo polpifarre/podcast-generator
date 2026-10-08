@@ -2,9 +2,12 @@
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import delete
 
 from app import pipeline
+from app.db import Episode, Session
 from app.main import app
+from app.scheduler import daily_episode, scheduler
 
 # What a successful make_episode() returns.
 FAKE_RESULT = {
@@ -89,3 +92,25 @@ def test_failed_episode_shows_error(client, monkeypatch):
 
 def test_missing_episode(client):
     assert client.get("/episodes/999999").status_code == 404
+
+
+def test_saving_the_time_moves_the_daily_episode(client):
+    profile = client.get("/profile").json()
+    client.put("/profile", json={**profile, "schedule_time": "06:45"})
+    next_run = scheduler.get_job("daily").next_run_time
+    assert (next_run.hour, next_run.minute) == (6, 45)
+
+
+def test_daily_episode_once_a_day(client, monkeypatch):
+    monkeypatch.setattr(pipeline, "make_episode", lambda *args: FAKE_RESULT)
+
+    async def delete_all_episodes():
+        async with Session() as db:
+            await db.execute(delete(Episode))
+            await db.commit()
+
+    # client.portal runs these in the app's event loop, like the real timer would.
+    client.portal.call(delete_all_episodes)
+    client.portal.call(daily_episode)  # no episode today: makes one
+    client.portal.call(daily_episode)  # one already today: skips
+    assert [e["status"] for e in client.get("/episodes").json()] == ["done"]

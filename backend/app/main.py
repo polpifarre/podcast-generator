@@ -13,13 +13,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import MEDIA_DIR
 from app.db import Episode, Profile, Session, init_db
 from app.pipeline import run_episode
+from app.scheduler import schedule_daily, scheduler
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Runs once when the server starts: tables and demo profile."""
-    await init_db()
+    """Runs when the server starts (before `yield`) and when it stops (after)."""
+    await init_db()  # tables and demo profile
+    scheduler.start()  # the daily episode timer
+    async with Session() as db:
+        profile = await db.scalar(select(Profile))
+    schedule_daily(profile.schedule_time)
     yield
+    scheduler.shutdown()
 
 
 app = FastAPI(title="Personal Podcast Generator", lifespan=lifespan)
@@ -79,6 +85,7 @@ async def update_profile(data: ProfileData, db: DB):
     for field, value in data.model_dump().items():
         setattr(profile, field, value)
     await db.commit()
+    schedule_daily(profile.schedule_time)  # move the timer if the time changed
     return profile
 
 

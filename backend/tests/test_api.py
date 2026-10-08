@@ -55,8 +55,8 @@ def test_update_profile_rejects_bad_values(client):
 def test_generate_episode(client, monkeypatch):
     calls = []
 
-    def fake_make_episode(interests, minutes, audio_file):
-        calls.append((interests, minutes))
+    def fake_make_episode(interests, minutes, tone, audio_file):
+        calls.append((interests, minutes, tone))
         return FAKE_RESULT
 
     monkeypatch.setattr(pipeline, "make_episode", fake_make_episode)
@@ -71,12 +71,12 @@ def test_generate_episode(client, monkeypatch):
     assert episode["status"] == "done"
     assert episode["title"] == "Test episode"
     assert episode["cost_usd"] == 0.01
-    assert calls == [(profile["interests"], profile["length_minutes"])]
+    assert calls == [(profile["interests"], profile["length_minutes"], profile["tone"])]
     assert client.get("/episodes").json()[0]["id"] == episode["id"]  # newest first
 
 
 def test_failed_episode_shows_error(client, monkeypatch):
-    def broken_make_episode(interests, minutes, audio_file):
+    def broken_make_episode(interests, minutes, tone, audio_file):
         raise RuntimeError("ElevenLabs error 401: invalid key")
 
     monkeypatch.setattr(pipeline, "make_episode", broken_make_episode)

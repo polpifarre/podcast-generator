@@ -51,11 +51,20 @@ class Script(BaseModel):
 # Longer episodes cover more stories, so each story doesn't have to stretch.
 STORIES_PER_LENGTH = {5: 3, 10: 4, 15: 5}
 
+# One line per tone, chosen in Settings.
+TONES = {
+    "casual": "Relaxed and warm, like two friends chatting over coffee; light humor is fine.",
+    "analytical": "Thoughtful and precise; spend more time on causes, numbers and what "
+    "they mean.",
+    "anchor": "Crisp and polished, like an evening news broadcast; little banter.",
+}
+
 # The instructions for the LLM. The conversation rules come from the Episode 0 notes:
 # a warmer intro, one host explains each story, outlets named once, fewer turns.
 PROMPT = """You write scripts for a daily news podcast with two co-hosts, Alex (speaker "A")
-and Sam (speaker "B"). They are equal partners: both explain stories, both ask questions,
-and they talk like two friends who follow the news closely.
+and Sam (speaker "B"). They are equal partners: both explain stories and both ask
+questions.
+Tone: {tone}
 
 Grounding:
 - Use ONLY the articles provided. Never invent numbers, names, or quotes. If an article is
@@ -142,7 +151,7 @@ def get_articles(interests: list[str]) -> list[dict]:
 # --- 2. Script: one OpenAI call -----------------------------------------------------
 
 
-def write_script(articles: list[dict], interests: list[str], minutes: int):
+def write_script(articles: list[dict], interests: list[str], minutes: int, tone: str):
     """Returns (Script, input tokens, output tokens); the tokens give the cost."""
     corpus = "\n\n".join(
         f"[{i}] {a['title']}\nOutlet: {a['outlet']}\nURL: {a['url']}\n{a['text']}"
@@ -158,6 +167,7 @@ def write_script(articles: list[dict], interests: list[str], minutes: int):
             {
                 "role": "system",
                 "content": PROMPT.format(
+                    tone=TONES[tone],
                     words=words,
                     minutes=minutes,
                     stories=stories,
@@ -244,7 +254,9 @@ def stitch(clips: list[bytes], audio_file: Path) -> float:
 # --- All stages ---------------------------------------------------------------------
 
 
-def make_episode(interests: list[str], minutes: int, audio_file: Path) -> dict:
+def make_episode(
+    interests: list[str], minutes: int, tone: str, audio_file: Path
+) -> dict:
     """Run every stage and return what to save on the Episode. Raises if a stage fails."""
     timings = {}  # seconds per stage, to see where the time goes
 
@@ -253,7 +265,7 @@ def make_episode(interests: list[str], minutes: int, audio_file: Path) -> dict:
     timings["news"] = round(time.perf_counter() - start, 1)
 
     start = time.perf_counter()
-    script, tokens_in, tokens_out = write_script(articles, interests, minutes)
+    script, tokens_in, tokens_out = write_script(articles, interests, minutes, tone)
     timings["script"] = round(time.perf_counter() - start, 1)
 
     start = time.perf_counter()
@@ -303,6 +315,7 @@ async def run_episode(episode_id: int) -> None:
                 make_episode,
                 profile.interests,
                 profile.length_minutes,
+                profile.tone,
                 MEDIA_DIR / f"episode-{episode_id}.mp3",
             )
         except Exception as e:  # noqa: BLE001 (on purpose: any failure goes on the episode)

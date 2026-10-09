@@ -1,4 +1,9 @@
-.PHONY: dev backend frontend test lint episode reset-db
+.PHONY: install dev backend frontend test lint episode reset-db
+
+# Backend packages (Python, with uv) and website packages (Node, with pnpm).
+install:
+	cd backend && uv sync
+	cd frontend && pnpm install
 
 # Website at http://localhost:5173, backend at http://localhost:8000 (API page at /docs).
 # Both restart when their code changes; Ctrl+C stops both.

@@ -39,7 +39,7 @@ function DashboardContent({ metrics: { mock, real } }: { metrics: Metrics }) {
       <CompletionByTopic topics={mock.completion_by_topic} />
 
       <h2>
-        This app <span className="badge real">Real data</span>
+        This app <span className="badge">Real data</span>
       </h2>
       <div className="stats">
         <Stat

@@ -1,6 +1,6 @@
 """One episode: news -> script -> voices -> audio file.
 
-Plain (non-async) code that reads top to bottom, like the spike did. make_episode() does
+Plain (non-async) code that reads top to bottom. make_episode() does
 the work; run_episode() runs it in a background thread and saves the result on the
 Episode row. "Generate now", the daily schedule and `make episode` all use run_episode().
 """
@@ -26,13 +26,13 @@ from app.config import MEDIA_DIR, REPO_ROOT, settings
 from app.db import Episode, Profile, Session, engine, init_db
 
 MAX_CHARS_PER_ARTICLE = 4000  # news puts the key facts first; this caps the LLM cost
-# Turns the episode length into a word target. Measured: our hosts speak 157-162
-# words per minute (Episodes 1-6).
+# Turns the episode length into a word target. Measured on the first episodes: the
+# hosts speak 157-162 words per minute.
 WORDS_PER_MINUTE = 160
 CHUNK_MAX_CHARS = 1900  # ElevenLabs takes about 2,000 characters per request
 
 # trafilatura waits up to 30 s for a site and tries 3 times: about 2 minutes for a site
-# that never answers (Episode 1 lost 4 minutes to two of them). With 5 s: about 20 s.
+# that never answers (one episode lost 4 minutes to two of them). With 5 s: about 20 s.
 DOWNLOAD_CONFIG = use_config()
 DOWNLOAD_CONFIG.set("DEFAULT", "DOWNLOAD_TIMEOUT", "5")
 
@@ -56,7 +56,7 @@ STORIES_PER_LENGTH = {5: 3, 10: 5, 15: 8}
 ARTICLES_PER_LENGTH = {5: 6, 10: 8, 15: 12}  # shared between the interests
 
 # The tone chosen in Settings. Concrete behaviors, because a vague hint ("thoughtful
-# and precise") changed little: Analytical sounded like Casual (Episode 4).
+# and precise") changed little: Analytical sounded like Casual.
 TONES = {
     "casual": "Casual. Everyday words, light jokes and personal reactions ('honestly, "
     "that surprised me'). Relaxed and warm, like two friends chatting over coffee.",
@@ -68,8 +68,8 @@ TONES = {
     "professional.",
 }
 
-# The instructions for the LLM. The conversation rules come from the Episode 0 notes:
-# a warmer intro, one host explains each story, outlets named once, fewer turns.
+# The instructions for the LLM. The conversation rules come from listening to the first
+# episodes: a warmer intro, one host explains each story, outlets named once, fewer turns.
 PROMPT = """You write scripts for a daily news podcast with two co-hosts, Alex (speaker "A")
 and Sam (speaker "B"). They are equal partners: both explain stories and both ask
 questions.

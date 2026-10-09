@@ -46,7 +46,7 @@ class Segment(BaseModel):
 class Script(BaseModel):
     title: str
     segments: list[Segment]
-    sources_used: list[str]
+    sources_used: list[int]  # article numbers, e.g. [1, 3]: can't be mistyped like URLs
 
 
 # Longer episodes cover more stories (from more articles) instead of stretching each
@@ -110,7 +110,7 @@ Length: about {words} words in total ({minutes} minutes of audio), about {story_
 per story. Scripts often come out too short: use the detail in the articles to reach the
 length.
 
-sources_used: the URLs of the articles you actually used."""
+sources_used: the numbers of the articles you actually used, e.g. [1, 3]."""
 
 
 # --- 1. News: Bing News RSS per interest, then the article text ---------------------
@@ -296,11 +296,11 @@ def make_episode(
     return {
         "title": script.title,
         "script": [s.model_dump() for s in script.segments],
-        # Only the articles the LLM says it used.
+        # Only the articles the LLM says it used (numbered from 1 in the prompt).
         "sources": [
             {"title": a["title"], "outlet": a["outlet"], "url": a["url"]}
-            for a in articles
-            if a["url"] in script.sources_used
+            for i, a in enumerate(articles, 1)
+            if i in script.sources_used
         ],
         "audio_path": str(audio_file.relative_to(REPO_ROOT)),  # "media/episode-3.mp3"
         "duration_sec": round(duration),

@@ -114,3 +114,12 @@ def test_daily_episode_once_a_day(client, monkeypatch):
     client.portal.call(daily_episode)  # no episode today: makes one
     client.portal.call(daily_episode)  # one already today: skips
     assert [e["status"] for e in client.get("/episodes").json()] == ["done"]
+
+
+def test_metrics(client):
+    metrics = client.get("/metrics").json()
+    assert metrics["mock"]["users"] > 0
+    assert len(metrics["mock"]["episodes_per_day"]) == 30
+    # The real numbers count the episodes in the database.
+    done = [e for e in client.get("/episodes").json() if e["status"] == "done"]
+    assert metrics["real"]["episodes_done"] == len(done)

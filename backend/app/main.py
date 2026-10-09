@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import MEDIA_DIR
 from app.db import Episode, Profile, Session, init_db
+from app.metrics import mock_usage, real_numbers
 from app.pipeline import run_episode
 from app.scheduler import schedule_daily, scheduler
 
@@ -124,6 +125,6 @@ async def generate_episode(background: BackgroundTasks, db: DB):
 
 
 @app.get("/metrics")
-async def get_metrics():
-    """Usage numbers for the dashboard. To do in Phase 5."""
-    return {}
+async def get_metrics(db: DB):
+    """Numbers for the internal dashboard: mock usage, plus real cost and time."""
+    return {"mock": mock_usage(), "real": await real_numbers(db)}

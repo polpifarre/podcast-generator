@@ -4,6 +4,15 @@
   --accent: #2563eb;
   --border: #9ca3af80;
   --muted: #6b7280;
+  --series: #2a78d6; /* chart bars; checked for contrast on light and dark */
+  --grid: #e1e0d9; /* chart gridlines */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --series: #3987e5;
+    --grid: #2c2c2a;
+  }
 }
 
 body {
@@ -124,4 +133,131 @@ details {
 
 .error {
   color: #dc2626;
+}
+
+/* --- Internal dashboard --------------------------------------------------- */
+
+.badge {
+  font-size: 0.75rem;
+  font-weight: normal;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  vertical-align: middle;
+}
+
+/* Headline numbers in a row that wraps on narrow screens. */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+}
+
+.stat {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+}
+
+.stat-label,
+.stat-note {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.stat-value {
+  font-size: 1.6rem;
+  font-weight: 600;
+}
+
+.chart {
+  margin: 1.5rem 0;
+}
+
+.chart figcaption {
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+/* Column chart: gridlines with their values on the left, columns on top. */
+.plot {
+  position: relative;
+  height: 160px;
+  margin-left: 3rem;
+}
+
+.gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--grid);
+}
+
+.gridline span {
+  position: absolute;
+  right: calc(100% + 0.5rem);
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.columns {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.column {
+  flex: 1;
+  max-width: 24px;
+  background: var(--series);
+  border-radius: 4px 4px 0 0;
+}
+
+.column:hover {
+  opacity: 0.7;
+}
+
+.x-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-left: 3rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.chart table {
+  font-variant-numeric: tabular-nums;
+}
+
+.chart td {
+  padding: 0 1rem 0 0;
+}
+
+/* Horizontal bars: topic, then the bar with its value at the tip. */
+.hbar-row {
+  display: grid;
+  grid-template-columns: 7rem 1fr;
+  align-items: center;
+  margin-bottom: 0.4rem;
+}
+
+.hbar-track {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hbar {
+  height: 16px;
+  background: var(--series);
+  border-radius: 0 4px 4px 0;
+}
+
+.hbar-value {
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
 }

@@ -46,3 +46,25 @@ export const generateEpisode = () =>
 // An episode is being made while it's pending or working.
 export const isInProgress = (episode: Episode) =>
   episode.status === 'pending' || episode.status === 'working'
+
+// The internal dashboard's numbers: mock usage across all listeners, plus real cost
+// and time from this app's episodes (null until one episode is done).
+export type Metrics = {
+  mock: {
+    users: number
+    episodes: number // last 30 days
+    completion_rate: number // 0-1
+    minutes_listened: number
+    episodes_per_day: { date: string; episodes: number }[]
+    completion_by_topic: { topic: string; rate: number }[]
+  }
+  real: {
+    episodes_done: number
+    episodes_failed: number
+    avg_cost_usd: number | null
+    avg_generation_sec: number | null
+    cost_per_audio_minute_usd: number | null
+  }
+}
+
+export const getMetrics = () => request<Metrics>('/metrics')

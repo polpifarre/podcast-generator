@@ -55,12 +55,17 @@ class Script(BaseModel):
 STORIES_PER_LENGTH = {5: 3, 10: 5, 15: 8}
 ARTICLES_PER_LENGTH = {5: 6, 10: 8, 15: 12}  # shared between the interests
 
-# One line per tone, chosen in Settings.
+# The tone chosen in Settings. Concrete behaviors, because a vague hint ("thoughtful
+# and precise") changed little: Analytical sounded like Casual (Episode 4).
 TONES = {
-    "casual": "Relaxed and warm, like two friends chatting over coffee; light humor is fine.",
-    "analytical": "Thoughtful and precise; spend more time on causes, numbers and what "
-    "they mean.",
-    "anchor": "Crisp and polished, like an evening news broadcast; little banter.",
+    "casual": "Casual. Everyday words, light jokes and personal reactions ('honestly, "
+    "that surprised me'). Relaxed and warm, like two friends chatting over coffee.",
+    "analytical": "Analytical. For every story, explain why it happened and what its key "
+    "number means. In each story, one host questions a claim or asks for the evidence. "
+    "No small talk and no jokes.",
+    "anchor": "News anchor. Complete, polished sentences; no jokes, slang or small talk. "
+    "Crisp transitions between stories ('Turning now to...'). Reactions are brief and "
+    "professional.",
 }
 
 # The instructions for the LLM. The conversation rules come from the Episode 0 notes:

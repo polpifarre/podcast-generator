@@ -25,9 +25,10 @@ from trafilatura.settings import use_config
 from app.config import MEDIA_DIR, REPO_ROOT, settings
 from app.db import Episode, Profile, Session, engine, init_db
 
-TOTAL_ARTICLES = 6  # shared between the interests
 MAX_CHARS_PER_ARTICLE = 4000  # news puts the key facts first; this caps the LLM cost
-WORDS_PER_MINUTE = 150  # used to turn the episode length into a word target
+# Turns the episode length into a word target. Measured: our hosts speak 157-162
+# words per minute (Episodes 1-6).
+WORDS_PER_MINUTE = 160
 CHUNK_MAX_CHARS = 1900  # ElevenLabs takes about 2,000 characters per request
 
 # trafilatura waits up to 30 s for a site and tries 3 times: about 2 minutes for a site
@@ -48,8 +49,11 @@ class Script(BaseModel):
     sources_used: list[str]
 
 
-# Longer episodes cover more stories, so each story doesn't have to stretch.
-STORIES_PER_LENGTH = {5: 3, 10: 4, 15: 5}
+# Longer episodes cover more stories (from more articles) instead of stretching each
+# one. Measured: a story comes out at about 220-270 words whatever budget is asked, so
+# the story count sets the length (15 minutes: 5 stories gave 10:51, 7 gave 12:51).
+STORIES_PER_LENGTH = {5: 3, 10: 5, 15: 8}
+ARTICLES_PER_LENGTH = {5: 6, 10: 8, 15: 12}  # shared between the interests
 
 # One line per tone, chosen in Settings.
 TONES = {
@@ -107,9 +111,9 @@ sources_used: the URLs of the articles you actually used."""
 # --- 1. News: Bing News RSS per interest, then the article text ---------------------
 
 
-def get_articles(interests: list[str]) -> list[dict]:
-    """About 6 articles in total, shared evenly between the interests."""
-    per_interest = max(1, TOTAL_ARTICLES // len(interests))  # 3 interests -> 2 each
+def get_articles(interests: list[str], total: int) -> list[dict]:
+    """About `total` articles, shared evenly between the interests."""
+    per_interest = max(1, total // len(interests))  # 6 for 3 interests -> 2 each
     articles = []
     for topic in interests:
         # setmkt/setlang: US English results, whatever country we run from.
@@ -261,7 +265,7 @@ def make_episode(
     timings = {}  # seconds per stage, to see where the time goes
 
     start = time.perf_counter()
-    articles = get_articles(interests)
+    articles = get_articles(interests, ARTICLES_PER_LENGTH[minutes])
     timings["news"] = round(time.perf_counter() - start, 1)
 
     start = time.perf_counter()

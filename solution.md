@@ -110,6 +110,18 @@ Eleven v4's list price is $0.08, the same as v3; the lower price is a limited-ti
 - **Caveats:** one run (n = 1), and prices from ElevenLabs' API pricing page on 2026-10-06, which change.
   Treat these numbers as orders of magnitude.
 
+### What I'd check every Monday
+
+The internal dashboard (`/dashboard`) shows numbers; this is what each one is for. Every check
+points to an action:
+
+| Number | Warning sign | What I'd do |
+|---|---|---|
+| Completion rate by topic | One topic drops: people stop listening early | Read a few of that topic's transcripts: weak scripts, or thin news for that topic |
+| Cost per audio minute | Rises (it should stay flat) | Check whether scripts run longer than their target, or a provider changed its price (ElevenLabs is most of the cost) |
+| Failed episodes, time to make one | A jump | A news site or an API is misbehaving; each episode's seconds per stage show which stage |
+| Episodes per day vs listeners | Episodes fall while listeners don't | The daily schedule isn't running for some listeners |
+
 ## 7. Scope cuts / what I'd do next
 
 The goal was the simplest solution that meets every requirement. These were considered and deliberately
